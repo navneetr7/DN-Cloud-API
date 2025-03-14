@@ -1,0 +1,4 @@
+digitalnerds.db
+__pycache__
+*.pyc
+*.log
