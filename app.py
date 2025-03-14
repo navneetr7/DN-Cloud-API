@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Header, Depends
 from fastapi.middleware.cors import CORSMiddleware
 import sqlite3
 import logging
@@ -9,10 +9,19 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
+# API key
+API_KEY = "E6OL4SR8GY5HH1LRDCOR9NZNL3VJX1LJ"
+
+# Dependency to verify the API key
+def verify_api_key(x_api_key: str = Header(...)):
+    if x_api_key != API_KEY:
+        raise HTTPException(status_code=401, detail="Invalid API key")
+    return x_api_key
+
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=["http://localhost:3000"],  # Add your website's domain later if needed
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -27,11 +36,11 @@ def get_db_connection():
         logger.error(f"Failed to connect to database: {e}")
         raise HTTPException(status_code=500, detail="Database connection failed")
 
-@app.get("/")
+@app.get("/", dependencies=[Depends(verify_api_key)])
 def home():
     return {"message": "Welcome to the Phone API"}
 
-@app.get("/phones/")
+@app.get("/phones/", dependencies=[Depends(verify_api_key)])
 def get_all_phones():
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -42,7 +51,7 @@ def get_all_phones():
         return [dict(phone) for phone in phones]
     raise HTTPException(status_code=404, detail="No phones found")
 
-@app.get("/phones/{model_name}/")
+@app.get("/phones/{model_name}/", dependencies=[Depends(verify_api_key)])
 def get_phone_details(model_name: str):
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -98,7 +107,7 @@ def get_phone_details(model_name: str):
         logger.warning(f"No phones found for {model_name}")
         raise HTTPException(status_code=404, detail="Phone not found")
 
-@app.get("/health/")
+@app.get("/health/", dependencies=[Depends(verify_api_key)])
 def db_health_check():
     try:
         conn = get_db_connection()
