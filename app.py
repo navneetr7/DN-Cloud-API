@@ -21,7 +21,7 @@ def verify_api_key(x_api_key: str = Header(...)):
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Add your website's domain later if needed
+    allow_origins=["http://localhost:3000", "https://www.digitalnerds.in"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
