@@ -78,11 +78,15 @@ def get_phone_details(model_name: str):
         ORDER BY 
             CASE 
                 WHEN LOWER(model_name) = LOWER(?) THEN 0  -- Exact match
-                WHEN LOWER(model_name) LIKE LOWER(? || '%') THEN 1  -- Starts with full term
-                WHEN LOWER(model_name) LIKE LOWER('%watch ' || ? || '%') THEN 2  -- Contains "watch" + last token
-                WHEN LOWER(model_name) LIKE LOWER('% ' || ? || '%') 
-                     OR LOWER(model_name) LIKE LOWER(? || ' %') THEN 3  -- Standalone last token
-                ELSE 4  -- Any match
+                WHEN (
+                    LOWER(model_name) LIKE '% ' || LOWER(?) || ' %' OR
+                    LOWER(model_name) LIKE LOWER(?) || ' %' OR
+                    LOWER(model_name) LIKE '% ' || LOWER(?)
+                ) THEN 1  -- Whole word match
+                WHEN LOWER(model_name) LIKE LOWER(?) || '%' THEN 2  -- Starts with full term
+                WHEN LOWER(REPLACE(model_name, ' ', '')) = LOWER(?) THEN 3  -- Space-insensitive exact
+                WHEN LOWER(model_name) LIKE '% ' || ? || '%' THEN 4  -- Standalone last token
+                ELSE 5  -- Any match
             END,
             CASE 
                 WHEN brand LIKE '%Samsung%' THEN 0  -- Boost Samsung
@@ -92,11 +96,13 @@ def get_phone_details(model_name: str):
             LENGTH(model_name),
             model_name
     """, where_params + [
-        exact_term,                  # Exact match
-        exact_term,                  # Starts with full term
-        tokens[-1] if tokens else exact_term,  # "watch" + last token
-        tokens[-1] if tokens else exact_term,  # Standalone last token (before)
-        tokens[-1] if tokens else exact_term   # Standalone last token (after)
+        exact_term,  # Exact match
+        exact_term,  # Whole word match first part
+        exact_term,  # Whole word match second part
+        exact_term,  # Whole word match third part
+        exact_term,  # Starts with full term
+        space_insensitive_term,  # Space-insensitive exact
+        tokens[-1] if tokens else exact_term  # Standalone last token
     ])
 
     phones = cursor.fetchall()
